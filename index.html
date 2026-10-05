@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pocket Bank (play money)</title>
+<title>Pocket Banking</title>
 <style>
 :root{--bg:#f6f3ec;--ink:#1d2b2a;--card:#fff;--line:#ddd6c6;--teal:#0f5c58;--gold:#e8b23a;--bad:#b3261e;--muted:#6b7673}
 @media (prefers-color-scheme:dark){:root{--bg:#142120;--ink:#eef1ee;--card:#1c2e2d;--line:#2f4644;--teal:#5cc2b8;--gold:#f0c35a;--bad:#ff8a80;--muted:#9bb0ad}}
@@ -72,8 +72,8 @@ li:first-child{border-top:0}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 // 1) Paste your own values from Supabase > Project Settings > API
-const SUPABASE_URL = "PASTE_PROJECT_URL";
-const SUPABASE_ANON_KEY = "PASTE_ANON_PUBLIC_KEY";
+const SUPABASE_URL = "https://sbgnlnnhzetimnftnlmo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiZ25sbm5oemV0aW1uZnRubG1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExOTcwNTQsImV4cCI6MjEwNjc3MzA1NH0.td7esuKWkA4L4WtAbtU6cwICvIfdk1BFmkXwegHqTug";
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
