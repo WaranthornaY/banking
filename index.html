@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocket Bank (play money)</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1d2b2a;--card:#fff;--line:#ddd6c6;--teal:#0f5c58;--gold:#e8b23a;--bad:#b3261e;--muted:#6b7673}
+@media (prefers-color-scheme:dark){:root{--bg:#142120;--ink:#eef1ee;--card:#1c2e2d;--line:#2f4644;--teal:#5cc2b8;--gold:#f0c35a;--bad:#ff8a80;--muted:#9bb0ad}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS",system-ui,sans-serif;padding:20px}
+main{max-width:520px;margin:0 auto}
+h1{font-size:1.4rem;margin:0 0 4px}
+.tag{display:inline-block;background:var(--gold);color:#1d2b2a;font-size:.8rem;font-weight:700;padding:2px 10px;border-radius:99px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:16px}
+input,button{font:inherit;width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin-top:8px}
+button{background:var(--teal);color:#fff;border:0;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;color:var(--teal);border:1px solid var(--line)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.bal{font-size:3rem;font-weight:800;letter-spacing:-1px;color:var(--teal)}
+.bal small{font-size:1rem;color:var(--muted);font-weight:600;margin-left:6px}
+.msg{min-height:1.4em;margin-top:8px;font-weight:600}
+.err{color:var(--bad)}.ok{color:var(--teal)}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+.in{color:var(--teal)}.out{color:var(--bad)}
+.sub{color:var(--muted);font-size:.85rem}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Pocket Bank <span class="tag">PLAY MONEY</span></h1>
+  <div class="sub">Not a real bank. Never enter real card or bank details.</div>
+
+  <!-- Signed out -->
+  <section id="auth" class="card">
+    <strong>Open or log in to an account</strong>
+    <input id="user" placeholder="Username (letters and numbers)" autocomplete="username" maxlength="20">
+    <input id="pass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+    <div class="row">
+      <button id="login">Log in</button>
+      <button id="signup" class="ghost">Create account</button>
+    </div>
+    <div id="authMsg" class="msg" role="status"></div>
+  </section>
+
+  <!-- Signed in -->
+  <section id="app" class="hide">
+    <div class="card">
+      <div class="sub">Signed in as <strong id="me"></strong></div>
+      <div class="bal"><span id="bal">0</span><small>coins</small></div>
+      <button id="logout" class="ghost">Log out</button>
+    </div>
+    <div class="card">
+      <strong>Send coins</strong>
+      <input id="to" placeholder="Their username" maxlength="20">
+      <input id="amt" type="number" min="1" step="1" placeholder="Amount">
+      <input id="note" placeholder="Note (optional)" maxlength="60">
+      <button id="send">Send coins</button>
+      <div id="sendMsg" class="msg" role="status"></div>
+    </div>
+    <div class="card">
+      <strong>History</strong>
+      <ul id="hist"></ul>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// 1) Paste your own values from Supabase > Project Settings > API
+const SUPABASE_URL = "PASTE_PROJECT_URL";
+const SUPABASE_ANON_KEY = "PASTE_ANON_PUBLIC_KEY";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const fakeEmail = u => u.toLowerCase() + "@pocketbank.example.com";
+const say = (el, text, cls) => { el.textContent = text; el.className = "msg " + (cls || ""); };
+let myId = null, timer = null;
+
+function cleanName() {
+  const u = $("user").value.trim().toLowerCase();
+  if (!/^[a-z0-9]{3,20}$/.test(u)) { say($("authMsg"), "Username must be 3-20 letters or numbers.", "err"); return null; }
+  return u;
+}
+
+$("signup").onclick = async () => {
+  const u = cleanName(); if (!u) return;
+  const { error } = await sb.auth.signUp({ email: fakeEmail(u), password: $("pass").value, options: { data: { username: u } } });
+  if (error) return say($("authMsg"), error.message.includes("duplicate") ? "That username is taken." : error.message, "err");
+  say($("authMsg"), "Account created. Logging in...", "ok");
+  $("login").click();
+};
+
+$("login").onclick = async () => {
+  const u = cleanName(); if (!u) return;
+  const { error } = await sb.auth.signInWithPassword({ email: fakeEmail(u), password: $("pass").value });
+  if (error) say($("authMsg"), "Wrong username or password.", "err");
+};
+
+$("logout").onclick = () => sb.auth.signOut();
+
+$("send").onclick = async () => {
+  const amount = parseInt($("amt").value, 10);
+  if (!$("to").value.trim() || !amount) return say($("sendMsg"), "Enter a username and an amount.", "err");
+  const { error } = await sb.rpc("transfer", { to_username: $("to").value.trim(), amount, note: $("note").value });
+  if (error) return say($("sendMsg"), error.message, "err");
+  say($("sendMsg"), "Sent " + amount + " coins to " + $("to").value.trim() + ".", "ok");
+  $("amt").value = ""; $("note").value = "";
+  refresh();
+};
+
+async function refresh() {
+  if (!myId) return;
+  const { data: p } = await sb.from("profiles").select("username,balance").eq("id", myId).single();
+  if (p) { $("me").textContent = p.username; $("bal").textContent = Number(p.balance).toLocaleString(); }
+  const { data: tx } = await sb.from("transactions").select("*").order("created_at", { ascending: false }).limit(30);
+  const ul = $("hist"); ul.innerHTML = "";
+  if (!tx || !tx.length) { ul.innerHTML = '<li class="sub">No transactions yet. Send some coins to get started.</li>'; return; }
+  for (const t of tx) {
+    const incoming = t.to_id === myId;
+    const li = document.createElement("li");
+    const left = document.createElement("div");
+    const who = document.createElement("div");
+    who.textContent = incoming ? "From " + t.from_name : "To " + t.to_name;
+    const meta = document.createElement("div"); meta.className = "sub";
+    meta.textContent = new Date(t.created_at).toLocaleString() + (t.note ? " - " + t.note : "");
+    left.append(who, meta);
+    const amt = document.createElement("div");
+    amt.className = incoming ? "in" : "out";
+    amt.textContent = (incoming ? "+" : "-") + Number(t.amount).toLocaleString();
+    li.append(left, amt); ul.append(li);
+  }
+}
+
+function show(session) {
+  myId = session ? session.user.id : null;
+  $("auth").classList.toggle("hide", !!session);
+  $("app").classList.toggle("hide", !session);
+  clearInterval(timer);
+  if (session) { refresh(); timer = setInterval(refresh, 5000); }
+  else { $("pass").value = ""; }
+}
+
+sb.auth.onAuthStateChange((_e, session) => show(session));
+sb.auth.getSession().then(({ data }) => show(data.session));
+</script>
+</body>
+</html>
